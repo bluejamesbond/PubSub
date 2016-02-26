@@ -28,30 +28,32 @@ describe(global.TEST, () => {
   });
 
   it('should send broadcast two peers', async done => {
-    psb.once('peer-broadcast', data => {
-      if (data.test === 'foo') {
-        done();
-      }
+    psb.Peer.once('yolo', (origin, data) => {
+      assert(psa.origin, origin);
+      assert(data.test, 'foo');
+      done();
     });
 
-    psa.once('peer-broadcast', () => {
+    psa.Peer.once('yolo', () => {
       throw new Error('should not broadcast to same socket');
     });
 
-    psa.peer.broadcast('peer-broadcast', {test: 'foo'});
+    psa.Peer.broadcast('yolo', {test: 'foo'});
   });
 
   it('should emit between two peers', async () => {
-    psb.once('peer-emit', (data, respond) => {
+    psb.Peer.once('yolo2', (origin, data, respond) => {
+      assert(psa.origin, origin);
       assert(data.test, 'bar');
       respond({status: 'ok'});
     });
 
-    psa.once('peer-emit', () => {
+    psa.Peer.once('yolo2', () => {
       throw new Error('should not emit to same socket');
     });
 
-    const res = await psa.peer.emit(psb.origin, 'peer-emit', {test: 'bar'});
+    const dest = psb.origin;
+    const res = await psa.Peer.emit(dest, 'yolo2', {test: 'bar'});
 
     if (res.status !== 'ok') {
       throw new Error('Failed response');
@@ -82,7 +84,7 @@ describe(global.TEST, () => {
   });
 
   it('should disconnect client (from server)', done => {
-    psa.once(`client-disconnected-${accessor.token}`, () => done());
+    psa.Client.once(`disconnect-${accessor.token}`, () => done());
     psa.reject(accessor.token);
   });
 

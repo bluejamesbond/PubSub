@@ -1,7 +1,7 @@
 import path from 'path';
 import stack from 'callsite';
 import config from 'config';
-import * as PubSub from '../../dist/index.compiled';
+import * as PubSub from '../../dist/index';
 
 global.TEST = path.basename(stack()[7].getFileName());
 

@@ -6,7 +6,7 @@ import fs from 'fs';
 
 const dbFile = 'accepted.cache.json';
 
-export default class Slave extends EventEmitter {
+export default class ClientCom extends EventEmitter {
   constructor(debug = true) {
     super();
 

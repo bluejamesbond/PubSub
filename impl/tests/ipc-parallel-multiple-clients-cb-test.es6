@@ -54,7 +54,7 @@ describe(global.TEST, () => {
       });
 
       async.each(msgRange, (i, next) => {
-        ps.emitCB(token, channel, message, next, () => 0);
+        ps.emit(token, channel, message, true, next, () => 0);
       }, () => process.nextTick(callback));
     }, () => {
       const duration = ((now() - start) / 1000);
@@ -66,7 +66,7 @@ describe(global.TEST, () => {
   it('should disconnect client (from server)', done => {
     async.each(range, (idx, callback) => {
       const token = accessors[idx].token;
-      ps.once(`client-disconnected-${token}`, () => callback());
+      ps.Client.once(`disconnect-${token}`, () => callback());
     }, () => done());
 
     _.each(range, idx => ps.reject(accessors[idx].token));
@@ -74,9 +74,5 @@ describe(global.TEST, () => {
 
   it('should disconnect socket-server', () => {
     ps.disconnect();
-  });
-
-  it('should force exit', () => {
-    process.exit(0);
   });
 });

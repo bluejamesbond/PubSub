@@ -17,20 +17,32 @@ const defaultEventMap = {
   requestRemoveToken: 'remove-token',
   requestAuthorization: 'authorize',
   requestDeauthorization: 'deauthorize',
+  requestMasterEmit: 'slave-emit',
   requestPeerBroadcast: 'broadcast-peer',
   requestPeerEmit: 'emit-peer',
 
   // response events
-  responsePeerReceived: 'peer-got',
-  responseClientAwk: 'client-received',
-  responsePeerAwk: 'peer-received',
-  responseClientDisconnected: 'client-disconnected',
-  responsePeerMessage: 'peer-message',
-  responseClientConnected: 'client-connected',
-  responseServerAddress: 'server-address',
   responseTokenAdded: 'token-added',
-  responseTokenRemoved: 'token-removed'
+  responseTokenRemoved: 'token-removed',
+  responseClientConnected: 'client-connected',
+  responseClientDisconnected: 'client-disconnected',
+  responseClientAwk: 'client-received',
+
+  responseMasterMessage: 'master-message',
+  responseMasterAwk: 'master-received',
+  responseSlaveReceived: 'slave-got',
+
+  responsePeerMessage: 'peer-message',
+  responsePeerReceived: 'peer-got',
+  responsePeerAwk: 'peer-received',
+
+  responseServerAddress: 'server-address'
 };
+
+// TODO
+// Client events: connect, disconnect, accept, reject
+// Peer events: connect, disconnect, channel
+// Master events: channel
 
 const active = {};
 
@@ -79,33 +91,109 @@ class PubSubSlave extends EventEmitter {
     this.queue.pause();
   }
 
-  peer = {
-    broadcast: this.peerBroadcast.bind(this),
-    volatile: this.peerVolatile.bind(this),
-    emit: this.peerEmit.bind(this),
-    emitCB: this.peerEmitCB.bind(this)
+  Peer = {
+    broadcast: this._peerBroadcast.bind(this),
+    volatile: this._peerVolatile.bind(this),
+    emit: this._peerEmit.bind(this),
+    on: this._peerOn.bind(this),
+    removeListener: this._peerRemoveListener.bind(this),
+    once: this._peerOnce.bind(this)
+  };
+
+  Client = {
+    broadcast: this.broadcast.bind(this),
+    volatile: this.volatile.bind(this),
+    emit: this.emit.bind(this),
+    accept: this.accept.bind(this),
+    reject: this.reject.bind(this),
+    on: this._clientOn.bind(this),
+    removeListener: this._clientRemoveListener.bind(this),
+    once: this._clientOnce.bind(this)
+  };
+
+  Master = {
+    emit: this._masterEmit.bind(this),
+    on: this._masterOn.bind(this),
+    removeListener: this._masterRemoveListener.bind(this),
+    once: this._masterOnce.bind(this)
+  };
+
+  _clientOn(channel, ...args) {
+    return this.on(`client-${channel}`, ...args);
   }
 
-  peerBroadcast(channel, data) {
+  _clientOnce(channel, ...args) {
+    return this.once(`client-${channel}`, ...args);
+  }
+
+  _clientRemoveListener(channel, ...args) {
+    return this.removeListener(`client-${channel}`, ...args);
+  }
+
+  _masterOn(channel, ...args) {
+    return this.on(this.for(this.eventMap.responseMasterMessage, channel), ...args);
+  }
+
+  _masterOnce(channel, ...args) {
+    return this.on(this.for(this.eventMap.responseMasterMessage, channel), ...args);
+  }
+
+  _masterRemoveListener(channel, ...args) {
+    return this.on(this.for(this.eventMap.responseMasterMessage, channel), ...args);
+  }
+
+  _peerOn(channel, ...args) {
+    return this.on(this.for(this.eventMap.responsePeerMessage, channel), ...args);
+  }
+
+  _peerOnce(channel, ...args) {
+    return this.on(this.for(this.eventMap.responsePeerMessage, channel), ...args);
+  }
+
+  _peerRemoveListener(channel, ...args) {
+    return this.on(this.for(this.eventMap.responsePeerMessage, channel), ...args);
+  }
+
+  _masterEmit(channel, data, awk = true) {
+    if (!awk) {
+      return this.queue.push({action: this.eventMap.requestMasterEmit, channel, data});
+    }
+
+    return new Promise((resolve, reject) => {
+      this.queue.push({action: this.eventMap.requestMasterEmit, channel, data, awk, resolve, reject});
+    });
+  }
+
+  _peerBroadcast(channel, data) {
     this.queue.push({channel, action: this.eventMap.requestPeerBroadcast, data, awk: true});
   }
 
-  peerVolatile(dest, channel, data) {
-    this.peerEmit(dest, channel, data, false);
+  _peerVolatile(dest, channel, data) {
+    this._peerEmit(dest, channel, data, false);
   }
 
-  peerEmit(dest, channel, data, awk = true) {
+  _peerEmit(dest, channel, data, awk = true, resolve, reject) {
     if (!awk) {
       return this.queue.push({action: this.eventMap.requestPeerEmit, channel, data, dest});
     }
 
-    return new Promise((resolve, reject) => {
-      this.queue.push({action: this.eventMap.requestPeerEmit, channel, data, awk, dest, resolve, reject});
-    });
-  }
+    if (typeof resolve === 'function' && typeof reject === 'function') {
+      return this.queue.push({action: this.eventMap.requestPeerEmit, channel, data, awk, dest, resolve, reject});
+    }
 
-  peerEmitCB(dest, channel, data, resolve, reject) {
-    this.queue.push({dest, channel, action: this.eventMap.requestPeerEmit, data, awk: true, resolve, reject});
+    return new Promise((_resolve, _reject) => {
+      const req = {
+        action: this.eventMap.requestPeerEmit,
+        channel,
+        data,
+        awk,
+        dest,
+        resolve: _resolve,
+        reject: _reject
+      };
+
+      this.queue.push(req);
+    });
   }
 
   // private emit
@@ -172,7 +260,7 @@ class PubSubSlave extends EventEmitter {
       });
 
       ipc.of[this.scope].on(eventMap.responseTokenAdded, data => {
-        if (data.origin !== this.origin) {
+        if (data.dest !== this.origin) {
           return;
         }
 
@@ -183,7 +271,7 @@ class PubSubSlave extends EventEmitter {
       });
 
       ipc.of[this.scope].on(eventMap.responseServerAddress, data => {
-        if (data.origin !== this.origin) {
+        if (data.dest !== this.origin) {
           return;
         }
 
@@ -193,7 +281,7 @@ class PubSubSlave extends EventEmitter {
       });
 
       ipc.of[this.scope].on(eventMap.responseTokenRemoved, data => {
-        if (data.origin !== this.origin) {
+        if (data.dest !== this.origin) {
           return;
         }
 
@@ -201,10 +289,12 @@ class PubSubSlave extends EventEmitter {
 
         this._emit(eventMap.responseTokenRemoved, data);
         this._emit(this.for(eventMap.responseTokenRemoved, data.token), data);
+        this._emit(`client-reject-${data.token}`, data.token);
+        this._emit(`client-reject`, data.token);
       });
 
       ipc.of[this.scope].on(eventMap.responseClientAwk, data => {
-        if (data.origin !== this.origin) {
+        if (data.dest !== this.origin) {
           return;
         }
 
@@ -215,7 +305,7 @@ class PubSubSlave extends EventEmitter {
       });
 
       ipc.of[this.scope].on(eventMap.responsePeerAwk, data => {
-        if (data.origin !== this.origin) {
+        if (data.dest !== this.origin) {
           return;
         }
 
@@ -225,8 +315,19 @@ class PubSubSlave extends EventEmitter {
         this._emit(this.for(eventMap.responsePeerAwk, data.id), data);
       });
 
+      ipc.of[this.scope].on(eventMap.responseMasterAwk, data => {
+        if (data.dest !== this.origin) {
+          return;
+        }
+
+        data = this.unwrap(data, eventMap.responseMasterAwk).data;
+
+        this._emit(eventMap.responseMasterAwk, data);
+        this._emit(this.for(eventMap.responseMasterAwk, data.id), data);
+      });
+
       ipc.of[this.scope].on(eventMap.responseClientConnected, data => {
-        if (data.origin !== this.origin) {
+        if (data.dest !== this.origin) {
           return;
         }
 
@@ -234,10 +335,12 @@ class PubSubSlave extends EventEmitter {
 
         this._emit(eventMap.responseClientConnected, data);
         this._emit(this.for(eventMap.responseClientConnected, data.token), data);
+        this._emit(`client-connect-${data.token}`, data.token);
+        this._emit(`client-connect`, data.token);
       });
 
       ipc.of[this.scope].on(eventMap.responsePeerMessage, data => {
-        if (data.origin !== this.origin) {
+        if (data.dest !== this.origin) {
           return;
         }
 
@@ -250,18 +353,26 @@ class PubSubSlave extends EventEmitter {
           this.queue.push(() => this._emitIPC(eventMap.responsePeerReceived, response));
         };
 
-        this._emit(eventMap.responsePeerMessage, data, respond);
-        this._emit(this.for(eventMap.responsePeerMessage, data.channel, respond), data.data);
+        this._emit(eventMap.responsePeerMessage, data.from, data, respond);
+        this._emit(this.for(eventMap.responsePeerMessage, data.channel), data.from, data.data, respond);
+      });
 
-        for (const e in this.eventMap) {
-          if (this.eventMap.hasOwnProperty(e)) {
-            if (data.channel === eventMap[e]) {
-              return;
-            }
-          }
+      ipc.of[this.scope].on(eventMap.responseMasterMessage, data => {
+        if (data.dest !== this.origin) {
+          return;
         }
 
-        this._emit(data.channel, data.data, respond);
+        data = this.unwrap(data, eventMap.responseMasterMessage).data;
+
+        let v = 0;
+        const respond = res => {
+          if (v++) return;
+          const response = {id: this.origin, data: {...data, _data: data.data, data: res}};
+          this.queue.push(() => this._emitIPC(eventMap.responseSlaveReceived, response));
+        };
+
+        this._emit(eventMap.responseMasterMessage, data, respond);
+        this._emit(this.for(eventMap.responseMasterMessage, data.channel), data.data, respond);
       });
 
       ipc.of[this.scope].on(eventMap.responseClientDisconnected, data => {
@@ -269,11 +380,13 @@ class PubSubSlave extends EventEmitter {
 
         this._emit(eventMap.responseClientDisconnected, data);
         this._emit(this.for(eventMap.responseClientDisconnected, data.token), data);
+        this._emit(`client-disconnect-${data.token}`, data.token);
+        this._emit(`client-disconnect`, data.token);
       });
     });
   }
 
-  generateUUID() {
+  _generateUUID() {
     return crypto.randomBytes(10).toString('hex');
   }
 
@@ -287,7 +400,7 @@ class PubSubSlave extends EventEmitter {
 
   _handleTransmit({token, dest, channel, data, resolve, action, reject, awk}, callback) {
     const eventMap = this.eventMap;
-    const eventId = this.generateUUID();
+    const eventId = this._generateUUID();
 
     if (action === this.eventMap.requestBroadcast ||
       action === this.eventMap.requestPeerBroadcast) {
@@ -325,8 +438,10 @@ class PubSubSlave extends EventEmitter {
 
     if (action === eventMap.requestEmit) {
       awkChan = eventMap.responseClientAwk;
-    } else {
+    } else if (action === eventMap.requestPeerEmit) {
       awkChan = eventMap.responsePeerAwk;
+    } else if (eventMap.requestMasterEmit) {
+      awkChan = eventMap.responseMasterAwk;
     }
 
     if (awk) {
@@ -411,18 +526,28 @@ class PubSubSlave extends EventEmitter {
     return this.emit(token, channel, data, false);
   }
 
-  emit(token, channel, data, awk = true) {
+  emit(token, channel, data, awk = true, resolve, reject) {
     if (!awk) {
       return this.queue.push({token, action: this.eventMap.requestEmit, channel, data});
     }
 
-    return new Promise((resolve, reject) => {
-      this.queue.push({token, action: this.eventMap.requestEmit, channel, data, awk, resolve, reject});
-    });
-  }
+    if (typeof resolve === 'function' && typeof reject === 'function') {
+      return this.queue.push({token, action: this.eventMap.requestEmit, channel, data, awk, resolve, reject});
+    }
 
-  emitCB(token, channel, data, resolve, reject) {
-    this.queue.push({token, channel, action: this.eventMap.requestEmit, data, awk: true, resolve, reject});
+    return new Promise((_resolve, _reject) => {
+      const req = {
+        token,
+        action: this.eventMap.requestEmit,
+        channel,
+        data,
+        awk,
+        resolve: _resolve,
+        reject: _reject
+      };
+
+      this.queue.push(req);
+    });
   }
 
   address() {

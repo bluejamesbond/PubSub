@@ -61,7 +61,4 @@ xcuserdata
 *.roadrunner.json
 *.cache.json
 
-package.noDevDeps.json
-
-!dist/**/*.compiled.js
-!dist/**/*.compiled.js.map
+package.noDevDeps.jso

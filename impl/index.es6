@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import https from 'https';
 import config from 'config';
-import * as PubSub from '../dist/index.compiled';
+import * as PubSub from '../dist/index';
 
 const debug = true;
 const remote = config.get('IPC.allowRemote');
@@ -18,8 +18,8 @@ const ssl = {
 
 const app = express();
 const server = https.createServer(ssl, app);
-const pubsub = new PubSub.Master(server, {appspace: port, debug, remote});
+const pubsub = new PubSub.Master({appspace: port, debug, remote});
 
-pubsub.listen(port, port + offset, () => {
+pubsub.listen(server, port, port + offset, () => {
   console.log(`Listening on ${port} and ${port + offset}`);
 });

@@ -4,15 +4,15 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _sio = require('./sio.compiled.js');
+var _nodeIpc = require('./node-ipc.js');
 
-Object.defineProperty(exports, 'SocketIO', {
+Object.defineProperty(exports, 'NodeIPC', {
   enumerable: true,
   get: function get() {
-    return _interopRequireDefault(_sio).default;
+    return _interopRequireDefault(_nodeIpc).default;
   }
 });
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-//# sourceMappingURL=index.compiled.js.map
+//# sourceMappingURL=index.js.map

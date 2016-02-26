@@ -4,7 +4,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _pubsubMaster = require('./pubsub-master.compiled.js');
+var _pubsubMaster = require('./pubsub-master.js');
 
 Object.defineProperty(exports, 'Master', {
   enumerable: true,
@@ -13,7 +13,7 @@ Object.defineProperty(exports, 'Master', {
   }
 });
 
-var _pubsubSlave = require('./pubsub-slave.compiled.js');
+var _pubsubSlave = require('./pubsub-slave.js');
 
 Object.defineProperty(exports, 'Slave', {
   enumerable: true,
@@ -24,4 +24,4 @@ Object.defineProperty(exports, 'Slave', {
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-//# sourceMappingURL=index.compiled.js.map
+//# sourceMappingURL=index.js.map

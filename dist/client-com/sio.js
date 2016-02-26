@@ -13,9 +13,9 @@ var _socket = require('socket.io');
 
 var _socket2 = _interopRequireDefault(_socket);
 
-var _slave = require('../slave.compiled.js');
+var _clientCom = require('../client-com.js');
 
-var _slave2 = _interopRequireDefault(_slave);
+var _clientCom2 = _interopRequireDefault(_clientCom);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -25,8 +25,8 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-var SocketIO = exports.SocketIO = function (_Slave) {
-  _inherits(SocketIO, _Slave);
+var SocketIO = exports.SocketIO = function (_ClientCom) {
+  _inherits(SocketIO, _ClientCom);
 
   function SocketIO() {
     var debug = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
@@ -171,8 +171,8 @@ var SocketIO = exports.SocketIO = function (_Slave) {
   }]);
 
   return SocketIO;
-}(_slave2.default);
+}(_clientCom2.default);
 
 exports.default = SocketIO;
 
-//# sourceMappingURL=sio.compiled.js.map
+//# sourceMappingURL=sio.js.map

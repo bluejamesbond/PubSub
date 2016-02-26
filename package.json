@@ -2,7 +2,7 @@
   "name": "node-pubsub",
   "version": "1.0.0",
   "description": "Pusher system using the publisher/subscriber model",
-  "main": "dist/index.compiled.js",
+  "main": "dist/index.js",
   "dependencies": {
     "async": "1.5.2",
     "bluebird": "3.2.1",

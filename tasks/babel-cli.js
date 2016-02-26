@@ -10,6 +10,8 @@ const defaultEnv = 'dist';
 exports.transform = function transform(input, output, options) {
   process.env.BABEL_ENV = options.env || defaultEnv;
 
+  const extSrc = options.extSrc || '.es6';
+  const extDest = options.extDest || '.compiled.js';
   const source = fs.readFileSync(input, 'utf8');
   const generated = babel.transform(source, {
     filename: input,
@@ -21,7 +23,8 @@ exports.transform = function transform(input, output, options) {
 
   const code = generated.code
                         .replace(/require\(['"]\.(.*?)['"]\)/mg,
-                                 (matched, group) => `require('.${group.replace(/\.es6$/g, '.compiled.js')}\')`);
+                                 (matched, group) =>
+                                   `require('.${group.replace(new RegExp(`${extSrc}$`, 'g'), extDest)}')`);
 
   const sourcemap = convert.fromSource(code);
   const sourcemapfile = `${output}.map`;

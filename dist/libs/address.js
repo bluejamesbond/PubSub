@@ -42,4 +42,4 @@ function address(server) {
   return _address;
 }
 
-//# sourceMappingURL=address.compiled.js.map
+//# sourceMappingURL=address.js.map

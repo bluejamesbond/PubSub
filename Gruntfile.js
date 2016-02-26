@@ -13,7 +13,9 @@ module.exports = grunt => {
       impl: {
         options: {
           transformer: babel,
-          env: 'impl'
+          env: 'impl',
+          extSrc: '.es6',
+          extDest: '.compiled.js'
         },
         files: [{
           expand: true,
@@ -26,19 +28,21 @@ module.exports = grunt => {
       dist: {
         options: {
           transformer: babel,
-          env: 'dist'
+          env: 'dist',
+          extSrc: '.es6',
+          extDest: '.js'
         },
         files: [{
           expand: true,
           cwd: 'src/',
           src: ['**/*.es6', '*.es6'],
-          ext: '.compiled.js',
+          ext: '.js',
           dest: 'dist/'
         }, {
           expand: true,
           cwd: 'tests/',
           src: ['**/*.es6', '*.es6'],
-          ext: '.compiled.js',
+          ext: '.js',
           dest: 'tests/'
         }]
       }

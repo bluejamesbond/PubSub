@@ -1,7 +1,7 @@
 import io from 'socket.io';
-import Slave from '../slave.es6';
+import ClientCom from '../client-com.es6';
 
-export class SocketIO extends Slave {
+export class SocketIO extends ClientCom {
   constructor(debug = true) {
     super(debug);
     this.sio = io();

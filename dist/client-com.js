@@ -42,15 +42,15 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 var dbFile = 'accepted.cache.json';
 
-var Slave = function (_EventEmitter) {
-  _inherits(Slave, _EventEmitter);
+var ClientCom = function (_EventEmitter) {
+  _inherits(ClientCom, _EventEmitter);
 
-  function Slave() {
+  function ClientCom() {
     var debug = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
 
-    _classCallCheck(this, Slave);
+    _classCallCheck(this, ClientCom);
 
-    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(Slave).call(this));
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(ClientCom).call(this));
 
     var db = new _lokijs2.default();
 
@@ -70,7 +70,7 @@ var Slave = function (_EventEmitter) {
     return _this;
   }
 
-  _createClass(Slave, [{
+  _createClass(ClientCom, [{
     key: '_restore',
     value: function _restore() {
       try {
@@ -106,7 +106,7 @@ var Slave = function (_EventEmitter) {
         args[_key] = arguments[_key];
       }
 
-      return (_get2 = _get(Object.getPrototypeOf(Slave.prototype), 'emit', this)).call.apply(_get2, [this].concat(args));
+      return (_get2 = _get(Object.getPrototypeOf(ClientCom.prototype), 'emit', this)).call.apply(_get2, [this].concat(args));
     }
   }, {
     key: 'tokens',
@@ -215,9 +215,9 @@ var Slave = function (_EventEmitter) {
     }
   }]);
 
-  return Slave;
+  return ClientCom;
 }(_events2.default);
 
-exports.default = Slave;
+exports.default = ClientCom;
 
-//# sourceMappingURL=slave.compiled.js.map
+//# sourceMappingURL=client-com.js.map

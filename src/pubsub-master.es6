@@ -1,34 +1,35 @@
-import {SocketIO} from './slave/index.es6';
-import {NodeIPC} from './master/index.es6';
+import {SocketIO} from './client-com/index.es6';
+import {NodeIPC} from './ipc/index.es6';
 import address from './libs/address.es6';
 
 class PubSubMaster {
-  constructor(server, opts = {}) {
-    this.server = server;
+  constructor(opts = {}) {
     this.opts = opts;
 
-    this.slave = new SocketIO(opts.debug);
-    this.master = new NodeIPC(opts.remote, opts);
+    this.client = new SocketIO(opts.debug);
+    this.ipc = new NodeIPC(opts.remote, opts);
+    this.Slave = this.ipc.Slave;
   }
 
-  listen(master, slave, cb) {
-    this.slave.attach(this.server);
+  listen(server, ipcPort, clientPort, cb) {
+    this.server = server;
 
-    this.master.on('add-token', (origin, data) => this.slave.accept(origin, data.token));
-    this.master.on('remove-token', (origin, data) => this.slave.reject(origin, data.token));
-    this.master.on('broadcast', (origin, data) => this.slave.broadcast(origin, data.channel, data.data));
-    this.master.on('emit',
-                   (origin, data) => this.slave.emit(origin, data.token, data.channel, data.id, data.data, data.awk));
-    this.master.on('get-server-address',
-                   origin => address(this.server, this.opts.remote)
-                   .then(a => this.master.emit(origin, 'server-address', a)));
+    this.client.attach(server);
 
-    this.slave.on('client-received', (origin, data) => this.master.emit(origin, 'client-received', data));
-    this.slave.on('client-disconnected', (origin, data) => this.master.emit(origin, 'client-disconnected', data));
-    this.slave.on('token-added', (origin, data) => this.master.emit(origin, 'token-added', data));
-    this.slave.on('token-removed', (origin, data) => this.master.emit(origin, 'token-removed', data));
+    this.ipc.on('add-token', (origin, data) => this.client.accept(origin, data.token));
+    this.ipc.on('remove-token', (origin, data) => this.client.reject(origin, data.token));
+    this.ipc.on('broadcast', (origin, data) => this.client.broadcast(origin, data.channel, data.data));
+    this.ipc.on('emit',
+                (origin, data) => this.client.emit(origin, data.token, data.channel, data.id, data.data, data.awk));
+    this.ipc.on('get-server-address',
+                origin => address(server, this.opts.remote).then(a => this.ipc.emit(origin, 'server-address', a)));
 
-    this.master.listen(master, () => this.server.listen(slave, cb));
+    this.client.on('client-received', (origin, data) => this.ipc.emit(origin, 'client-received', data));
+    this.client.on('client-disconnected', (origin, data) => this.ipc.emit(origin, 'client-disconnected', data));
+    this.client.on('token-added', (origin, data) => this.ipc.emit(origin, 'token-added', data));
+    this.client.on('token-removed', (origin, data) => this.ipc.emit(origin, 'token-removed', data));
+
+    this.ipc.listen(ipcPort, () => this.server.listen(clientPort, cb));
   }
 }
 
