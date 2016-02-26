@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+
+# for dev
+
+npm install eslint@1.10.3 -g
+npm install babel-eslint@4.1.8 -g
+npm install eslint-config-airbnb@4.0.0 -g
+npm install eslint-plugin-markdown@1.0.0-beta.1 -g
+npm install eslint-plugin-mocha@1.1.0 eslint-plugin-react@3.16.1 -g
+npm install eslint-plugin-babel@3.1.0 -g
+npm install mocha -g
+npm install grunt-cli -g
+
+echo 'triggering ./update'
+
+. update ${1} # pass in mode

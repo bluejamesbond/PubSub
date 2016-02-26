@@ -1,0 +1,48 @@
+{
+  "start": "cd impl && node index.compiled.js",
+  "hooksDir": "impl/hooks/",
+  "preferPort": {
+    "mode": {
+      "manual": 3000
+    },
+    "branch": {
+      "master": 3000
+    }
+  },
+  "env": {
+    "default": {
+      "IPC_ALLOW_REMOTE": true,
+      "HTTPS_SSL_KEY": "./keys/localhost.key",
+      "HTTPS_SSL_CERTIFICATE": "./keys/localhost.crt"
+    },
+    "mode": {
+      "manual": {
+        "NODE_ENV": "staging",
+        "HTTPS_REJECT_UNAUTHORIZED": false,
+        "NODE_TLS_REJECT_UNAUTHORIZED": 0
+      },
+      "stage": {
+        "NODE_ENV": "staging",
+        "HTTPS_REJECT_UNAUTHORIZED": false,
+        "NODE_TLS_REJECT_UNAUTHORIZED": 0
+      },
+      "release": {
+        "NODE_ENV": "production",
+        "HTTPS_REJECT_UNAUTHORIZED": true,
+        "NODE_TLS_REJECT_UNAUTHORIZED": true
+      }
+    }
+  },
+  "pm2": {
+    "restart_delay": 10000,
+    "watch": false,
+    "min_uptime": "20s",
+    "max_restarts": 3,
+    "cwd": "impl",
+    "script": "./index.compiled.js",
+    "error_file": "/dev/null",
+    "out_file": "/dev/null",
+    "next_gen_js": false,
+    "max_memory_restart": "4G"
+  }
+}

@@ -1,0 +1,1 @@
+{"version":3,"sources":["index.es6"],"names":[],"mappings":";;;;;;;;;;;4CAAQ","file":"index.es6","sourcesContent":["export {default as NodeIPC} from './node-ipc.es6';\n"]}

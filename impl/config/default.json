@@ -1,0 +1,17 @@
+{
+  "Server": {
+    "protocol": "https",
+    "portOffset": 10000,
+    "port": 3000,
+    "httpsRejectUnauthorized": false,
+    "sslKey": "./keys/localhost.key",
+    "sslCert": "./keys/localhost.crt",
+    "sslCa": "./keys/localhost.csr"
+  },
+  "AppId": "local",
+  "NodeEnv": "development",
+  "Mode": "manual",
+  "IPC": {
+    "allowRemote": false
+  }
+}
