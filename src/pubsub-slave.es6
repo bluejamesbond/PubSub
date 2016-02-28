@@ -56,7 +56,7 @@ const defaultOpts = {
 };
 
 class PubSubSlave extends EventEmitter {
-  constructor(origin, address, remote, opts = defaultOpts) {
+  constructor(origin, address, opts = defaultOpts) {
     super();
 
     opts = Object.assign(defaultOpts, opts);
@@ -66,7 +66,7 @@ class PubSubSlave extends EventEmitter {
     this.scope = opts.scope;
     this.eventMap = Object.assign(defaultEventMap, opts.eventMap);
     this.remoteAddress = address;
-    this.remote = remote;
+    this.remote = opts.remote;
     this.resDefaultTimeout = opts.resDefaultTimeout;
     this.debug = opts.debug;
 
@@ -234,7 +234,7 @@ class PubSubSlave extends EventEmitter {
     ipc.config.silent = !this.debug;
     ipc.config.networkHost = this.resolveHost(address);
     ipc.config.networkPort = this.resolvePort(address);
-    ipc.config.appspace = this.opts.appspace;
+    ipc.config.appspace = this.opts.master || this.opts.appspace;
 
     this.configure(ipc);
 

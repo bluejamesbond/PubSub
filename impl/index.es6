@@ -18,7 +18,8 @@ const ssl = {
 
 const app = express();
 const server = https.createServer(ssl, app);
-const pubsub = new PubSub.Master({appspace: port, debug, remote});
+const id = port;
+const pubsub = new PubSub.Master(id, {debug, remote});
 
 pubsub.listen(server, port, port + offset, () => {
   console.log(`Listening on ${port} and ${port + offset}`);

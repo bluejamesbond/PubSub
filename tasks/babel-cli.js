@@ -26,12 +26,18 @@ exports.transform = function transform(input, output, options) {
                                  (matched, group) =>
                                    `require('.${group.replace(new RegExp(`${extSrc}$`, 'g'), extDest)}')`);
 
-  const sourcemap = convert.fromSource(code);
   const sourcemapfile = `${output}.map`;
   const mappingUrl = path.basename(sourcemapfile);
-  const ccode = `${convert.removeMapFileComments(code)}\n//# sourceMappingURL=${mappingUrl}`;
+  const sourcemapfiledir = sourcemapfile.split(path.sep);
+  sourcemapfiledir.pop();
+  const sources = [path.relative(sourcemapfiledir.join(path.sep), input)];
 
-  return {[output]: ccode, [sourcemapfile]: sourcemap.toJSON()};
+  const ccode = `${convert.removeMapFileComments(code)}\n//# sourceMappingURL=${mappingUrl}`;
+  const sourcemap = convert.fromSource(code)
+                           .setProperty('sources', sources)
+                           .toJSON();
+
+  return {[output]: ccode, [sourcemapfile]: sourcemap};
 };
 
 if (process.argv.length > 4 && require.main === module) {

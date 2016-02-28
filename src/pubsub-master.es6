@@ -3,11 +3,11 @@ import {NodeIPC} from './ipc/index.es6';
 import address from './libs/address.es6';
 
 class PubSubMaster {
-  constructor(opts = {}) {
+  constructor(id, opts = {}) {
     this.opts = opts;
 
     this.client = new SocketIO(opts.debug);
-    this.ipc = new NodeIPC(opts.remote, opts);
+    this.ipc = new NodeIPC(id, opts);
     this.Slave = this.ipc.Slave;
   }
 

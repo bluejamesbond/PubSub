@@ -19,15 +19,15 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var PubSubMaster = function () {
-  function PubSubMaster() {
-    var opts = arguments.length <= 0 || arguments[0] === undefined ? {} : arguments[0];
+  function PubSubMaster(id) {
+    var opts = arguments.length <= 1 || arguments[1] === undefined ? {} : arguments[1];
 
     _classCallCheck(this, PubSubMaster);
 
     this.opts = opts;
 
     this.client = new _index.SocketIO(opts.debug);
-    this.ipc = new _index2.NodeIPC(opts.remote, opts);
+    this.ipc = new _index2.NodeIPC(id, opts);
     this.Slave = this.ipc.Slave;
   }
 

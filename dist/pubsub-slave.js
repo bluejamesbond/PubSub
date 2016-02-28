@@ -96,8 +96,8 @@ var defaultOpts = {
 var PubSubSlave = function (_EventEmitter) {
   _inherits(PubSubSlave, _EventEmitter);
 
-  function PubSubSlave(origin, address, remote) {
-    var opts = arguments.length <= 3 || arguments[3] === undefined ? defaultOpts : arguments[3];
+  function PubSubSlave(origin, address) {
+    var opts = arguments.length <= 2 || arguments[2] === undefined ? defaultOpts : arguments[2];
 
     _classCallCheck(this, PubSubSlave);
 
@@ -136,7 +136,7 @@ var PubSubSlave = function (_EventEmitter) {
     _this.scope = opts.scope;
     _this.eventMap = Object.assign(defaultEventMap, opts.eventMap);
     _this.remoteAddress = address;
-    _this.remote = remote;
+    _this.remote = opts.remote;
     _this.resDefaultTimeout = opts.resDefaultTimeout;
     _this.debug = opts.debug;
 
@@ -356,7 +356,7 @@ var PubSubSlave = function (_EventEmitter) {
       _nodeIpc2.default.config.silent = !this.debug;
       _nodeIpc2.default.config.networkHost = this.resolveHost(address);
       _nodeIpc2.default.config.networkPort = this.resolvePort(address);
-      _nodeIpc2.default.config.appspace = this.opts.appspace;
+      _nodeIpc2.default.config.appspace = this.opts.master || this.opts.appspace;
 
       this.configure(_nodeIpc2.default);
 
