@@ -253,10 +253,13 @@ class PubSubSlave extends EventEmitter {
         });
 
         this.queue.resume();
+
+        this._emit('connect'); // FIXME wait for acceptance
       });
 
       ipc.of[this.scope].on('disconnect', () => {
         this.queue.pause();
+        this._emit('disconnect');
       });
 
       ipc.of[this.scope].on(eventMap.responseTokenAdded, data => {

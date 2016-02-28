@@ -375,10 +375,13 @@ var PubSubSlave = function (_EventEmitter) {
           });
 
           _this4.queue.resume();
+
+          _this4._emit('connect'); // FIXME wait for acceptance
         });
 
         _nodeIpc2.default.of[_this4.scope].on('disconnect', function () {
           _this4.queue.pause();
+          _this4._emit('disconnect');
         });
 
         _nodeIpc2.default.of[_this4.scope].on(eventMap.responseTokenAdded, function (data) {

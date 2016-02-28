@@ -1,6 +1,19 @@
 # PubSub
 Pusher system using the publisher/subscriber model; supports clustering
 
+## Design
+- **Peers**: Your application (logic) servers clustered for performance
+  - Connected to Master via. TCP or Unix/Windows Socket (set via `remote` option)
+  - Peers can communicate with each other via the `PubSub.Peer` API
+  - Peers can communicate with master via the `PubSub.Master` API
+  - Peers can communicate with clients via the `PubSub.Client` API
+- **Clients**: Clients which are communicating with your application servers
+  - Connected to Master via. WebSocket (Socket.IO)
+  - Clients can listen to information sent by the application servers
+  - Clients can respond back when an application sends a request
+- **Master**: Contains the PubSub hub that connects your users (connected via WebSockets) to your application servers 
+  - Master can communicate with application servers via the `PubSub.Slave` API 
+
 ## Install
 
 Install with `npm`
@@ -18,21 +31,10 @@ pm2 install branch-off
 // add this repo and the "master" branch
 ```
 
-## Example
+## Communicate Master ↔ Peer
 
-### PubSub Master (Server)
+### Master
 ```js
-import express from 'express';
-import fs from 'fs';
-import http from 'http';
-import config from 'config';
-import * as PubSub from 'node-pubsub';
-
-const debug = true;
-const remote = true;
-const port = 3000;
-const offset = 100;
-
 const app = express();
 const server = http.createServer(app);
 const pubsub = new PubSub.Master('master-server-0', {debug, remote});
@@ -47,75 +49,74 @@ Slave.on('connect', origin => {
   console.log('Connected', origin);
 });
 
-Slave.on('verify', (origin, respond) => {
-  respond({private: 5});
+Slave.on('cat', (origin, respond) => {
+  respond('dog');
 });
 ```
 
-### Slave (Server)
-```es6
-import cluster from 'cluster';
-import express from 'express';
-
-const id = 'slave-server';
-const remote = true;
-const app = express();
-const userId = crypto.randomBytes(15).toString('hex');
-const address = {port: 3000, protocol: 'http', hostname: '0.0.0.0'};
-const ps = new PubSub.Slave(id, address, {remote, master: 'master-server-0'});
+### Peer
+```js
+// connect to master
+const master = 'master-server-0'; // master name
+const address = {port: 3000, protocol: 'http', hostname: '0.0.0.0'}; // master address
+const ps = new PubSub.Slave('my-name', address, {remote, master});
 
 ps.connect();
 
-app.get('/socket', async (req, res) => {
-    const accessor = await ps.accept(userId);
-    const address = await ps.address();
-    res.json({address, accessor});
-});
+const {Master} = ps;
 
-app.listen(80);
-
-// interact with peers, client, master
-
-const {Peer, Client, Master} = ps;
-
-// client connect
-Client.on('connect', userId => {
-  const response = await Client.emit(userId, 'channel-2', {txt: 'hey!'});
-  Client.broadcast('channel-1', response); // broadcast to all clients
-});
-
-// client disconnect
-Client.on('disconnect', userId => {
-  console.log('Disconnected', userId);
-});
-
-// peer connect
-Peer.on('connect', origin => {
-  const response = Peer.emit(origin, 'password', {data: 'share-data'}); // ask peer for some data
-  const data = Master.emit('verify', response); // ask master for verification
-  Peer.broadcast('accept', {data, response}); // share with all peers
-});
-
-// peer disconnect
-Peer.on('disconnect', origin => {
-  console.log('Disconnected', origin);
-});
-
-Peer.on('accept', (origin, {data, response}) => {
-  console.log(data, response);
-});
-
-Peer.on('password', (origin, {data}) => {
-  console.log(data);
+ps.on('connect', async () => {
+  const res = await Master.emit('cat');
+  console.log(res); // 'dog'
 });
 ```
 
-### Client (WebSocket)
-```es6
-const res = await fetch('/socket');
-const {address, accessor: {uuid}} = await res.json();
-const url = format(address);
+## Communicate Peer ↔ Client
 
-socket = io(url, {query: `id=${uuid}`});
-socket.once('channel-1', res => console.log(res.text === 'hey!'));
+### Peer
+```es6
+// ... connect to master
+
+const {Client} = ps;
+
+Client.accept('user-01'); // only accepted users can connect
+
+Client.on('connect-user-01', async () => {
+  const res = await Client.emit('foo');
+  console.log(res); // 'bar'
+});
+```
+
+### Client
+```es6
+socket = io(url, {query: 'id=user-01'});
+
+socket.once('foo', respond => 
+  respond('bar');
+});
+```
+
+## Communicate Peer ↔ Peer
+
+### Peer 1
+```es6
+// ... connect to master
+
+const {Peer} = ps;
+
+ps.on('connect', async () => {
+  const res = await Peer.emit('add', [5, 4]);
+  console.log(res); // 9
+});
+```
+
+### Peer 2
+```es6
+// ... connect to master
+
+const {Peer} = ps;
+
+Peer.on('add', ([a, b]) => {
+  respond(a + b);
+});
 ```
