@@ -62,6 +62,9 @@ var defaultEventMap = {
   // response events
   responseTokenAdded: 'token-added',
   responseTokenRemoved: 'token-removed',
+  responseAuthorized: 'authorized',
+  responseAliveCheck: 'slave-alive',
+  responseAlive: 'is-alive',
   responseClientConnected: 'client-connected',
   responseClientDisconnected: 'client-disconnected',
   responseClientAwk: 'client-received',
@@ -363,20 +366,18 @@ var PubSubSlave = function (_EventEmitter) {
       return new _bluebird2.default(function (resolve) {
         _nodeIpc2.default[_this4.remote ? 'connectToNet' : 'connectTo'](_this4.scope, function () {
           _nodeIpc2.default.config.stopRetrying = false;
+          _nodeIpc2.default.of[_this4.scope].emit(eventMap.requestAuthorization, { id: _this4.origin });
           resolve();
+        });
 
-          _this4.queue.unshift(function () {
-            var req = {
-              id: _this4.origin,
-              data: { origin: _this4.origin }
-            };
+        _nodeIpc2.default.of[_this4.scope].on(eventMap.responseAliveCheck, function () {
+          _nodeIpc2.default.of[_this4.scope].emit(eventMap.responseAlive, { id: _this4.origin });
+        });
 
-            _this4._emitIPC(_this4.eventMap.requestAuthorization, req);
-          });
-
+        _nodeIpc2.default.of[_this4.scope].on(eventMap.responseAuthorized, function () {
           _this4.queue.resume();
-
-          _this4._emit('connect'); // FIXME wait for acceptance
+          _this4._emit('connect');
+          _this4._emit('authorized');
         });
 
         _nodeIpc2.default.of[_this4.scope].on('disconnect', function () {

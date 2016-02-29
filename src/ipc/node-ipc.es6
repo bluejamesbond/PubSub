@@ -167,20 +167,57 @@ class NodeIPC extends IPC {
           }
         }
 
+        const updateSocket = () => {
+          this.connections.set(origin, socket);
+
+          this.emit(origin, 'authorized');
+          this._emit(`slave-emit-connect`, origin);
+          this._emit(`slave-emit-connect-${origin}`, origin);
+        };
+
         if (this.connections.has(origin)) {
           const prevSocket = this.connections.get(origin);
 
           if (prevSocket && prevSocket.writable) {
-            return NodeIPC.terminate(socket);
+            let tid;
+            const event = `is-alive-${origin}`;
+
+            const prevAlive = () => {
+              clearTimeout(tid);
+              this.log('Force disconnection; new connection', origin);
+              return NodeIPC.terminate(socket);
+            };
+
+            const prevDead = () => {
+              this.removeListener(event, prevAlive);
+              this.log('Terminating previous connection due to no response', origin);
+              NodeIPC.terminate(prevSocket);
+              updateSocket();
+            };
+
+            this.once(event, prevAlive);
+
+            tid = setTimeout(prevDead, 2000);
+
+            try {
+              return this.emit(origin, 'slave-alive');
+            } catch (e) {
+              // continue to terminate the previous
+            }
           }
 
+          this.log('Terminating previous connection', origin);
           NodeIPC.terminate(prevSocket);
         }
 
-        this.connections.set(origin, socket);
+        updateSocket();
+      });
 
-        this._emit(`slave-emit-connect`, origin);
-        this._emit(`slave-emit-connect-${origin}`, origin);
+      ipc.server.on('is-alive', (req, socket) => {
+        const origin = socket.id;
+
+        this._emit('is-alive', origin);
+        this._emit(`is-alive-${origin}`, origin);
       });
 
       ipc.server.on('deauthorize', (req, socket) => {
@@ -233,6 +270,8 @@ class NodeIPC extends IPC {
 
       ipc.server.on('socket.disconnected', socket => {
         const origin = socket.id;
+
+        this.log('Disconnecting', origin, socket.__destroyed);
 
         if (!socket.__destroyed) {
           this.connections.delete(origin);

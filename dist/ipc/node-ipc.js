@@ -8,6 +8,8 @@ var _extends = Object.assign || function (target) { for (var i = 1; i < argument
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
+var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _nodeIpc = require('node-ipc');
@@ -247,20 +249,69 @@ var NodeIPC = function (_IPC) {
             }
           }
 
+          var updateSocket = function updateSocket() {
+            _this4.connections.set(origin, socket);
+
+            _this4.emit(origin, 'authorized');
+            _this4._emit('slave-emit-connect', origin);
+            _this4._emit('slave-emit-connect-' + origin, origin);
+          };
+
           if (_this4.connections.has(origin)) {
-            var prevSocket = _this4.connections.get(origin);
+            var _ret = function () {
+              var prevSocket = _this4.connections.get(origin);
 
-            if (prevSocket && prevSocket.writable) {
-              return NodeIPC.terminate(socket);
-            }
+              if (prevSocket && prevSocket.writable) {
+                var _ret2 = function () {
+                  var tid = undefined;
+                  var event = 'is-alive-' + origin;
 
-            NodeIPC.terminate(prevSocket);
+                  var prevAlive = function prevAlive() {
+                    clearTimeout(tid);
+                    _this4.log('Force disconnection; new connection', origin);
+                    return NodeIPC.terminate(socket);
+                  };
+
+                  var prevDead = function prevDead() {
+                    _this4.removeListener(event, prevAlive);
+                    _this4.log('Terminating previous connection due to no response', origin);
+                    NodeIPC.terminate(prevSocket);
+                    updateSocket();
+                  };
+
+                  _this4.once(event, prevAlive);
+
+                  tid = setTimeout(prevDead, 2000);
+
+                  try {
+                    return {
+                      v: {
+                        v: _this4.emit(origin, 'slave-alive')
+                      }
+                    };
+                  } catch (e) {
+                    // continue to terminate the previous
+                  }
+                }();
+
+                if ((typeof _ret2 === 'undefined' ? 'undefined' : _typeof(_ret2)) === "object") return _ret2.v;
+              }
+
+              _this4.log('Terminating previous connection', origin);
+              NodeIPC.terminate(prevSocket);
+            }();
+
+            if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
           }
 
-          _this4.connections.set(origin, socket);
+          updateSocket();
+        });
 
-          _this4._emit('slave-emit-connect', origin);
-          _this4._emit('slave-emit-connect-' + origin, origin);
+        _nodeIpc2.default.server.on('is-alive', function (req, socket) {
+          var origin = socket.id;
+
+          _this4._emit('is-alive', origin);
+          _this4._emit('is-alive-' + origin, origin);
         });
 
         _nodeIpc2.default.server.on('deauthorize', function (req, socket) {
@@ -336,6 +387,8 @@ var NodeIPC = function (_IPC) {
 
         _nodeIpc2.default.server.on('socket.disconnected', function (socket) {
           var origin = socket.id;
+
+          _this4.log('Disconnecting', origin, socket.__destroyed);
 
           if (!socket.__destroyed) {
             _this4.connections.delete(origin);

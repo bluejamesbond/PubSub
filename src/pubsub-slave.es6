@@ -24,6 +24,9 @@ const defaultEventMap = {
   // response events
   responseTokenAdded: 'token-added',
   responseTokenRemoved: 'token-removed',
+  responseAuthorized: 'authorized',
+  responseAliveCheck: 'slave-alive',
+  responseAlive: 'is-alive',
   responseClientConnected: 'client-connected',
   responseClientDisconnected: 'client-disconnected',
   responseClientAwk: 'client-received',
@@ -241,20 +244,18 @@ class PubSubSlave extends EventEmitter {
     return new Promise(resolve => {
       ipc[this.remote ? 'connectToNet' : 'connectTo'](this.scope, () => {
         ipc.config.stopRetrying = false;
+        ipc.of[this.scope].emit(eventMap.requestAuthorization, {id: this.origin});
         resolve();
+      });
 
-        this.queue.unshift(() => {
-          const req = {
-            id: this.origin,
-            data: {origin: this.origin}
-          };
+      ipc.of[this.scope].on(eventMap.responseAliveCheck, () => {
+        ipc.of[this.scope].emit(eventMap.responseAlive, {id: this.origin});
+      });
 
-          this._emitIPC(this.eventMap.requestAuthorization, req);
-        });
-
+      ipc.of[this.scope].on(eventMap.responseAuthorized, () => {
         this.queue.resume();
-
-        this._emit('connect'); // FIXME wait for acceptance
+        this._emit('connect');
+        this._emit('authorized');
       });
 
       ipc.of[this.scope].on('disconnect', () => {
