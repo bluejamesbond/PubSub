@@ -435,7 +435,7 @@ class PubSubSlave extends EventEmitter {
 
     const timeout = () => {
       this.removeListener(event, accepted);
-      reject({token, channel, data, awk});
+      reject(Error('No response received'));
     };
 
     let awkChan;

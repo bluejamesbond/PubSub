@@ -575,7 +575,7 @@ var PubSubSlave = function (_EventEmitter) {
 
       var timeout = function timeout() {
         _this5.removeListener(event, accepted);
-        reject({ token: token, channel: channel, data: data, awk: awk });
+        reject(Error('No response received'));
       };
 
       var awkChan = undefined;
