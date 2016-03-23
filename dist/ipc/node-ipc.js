@@ -45,8 +45,27 @@ var defaultOpts = {
   allowPeerEmit: true, // true: slaves can message a specific slave by origin
   allowPeerBroadcast: true, // true: slaves can talk amongst themselves
   allowSlaveEmit: true, // true: slaves can talk to master
+  allowAuthorizeBroadcast: true,
+  allowDeauthorizeBroadcast: true,
   allowAllConnections: true // false: set acceptable connections via accept, disconnect
 };
+
+function regexCast(pattern) {
+  var parts = pattern.split('/');
+  var regex = pattern;
+  var options = '';
+
+  if (parts.length > 1) {
+    regex = parts[1];
+    options = parts[2];
+  }
+
+  try {
+    return new RegExp(regex, options);
+  } catch (e) {
+    return false;
+  }
+}
 
 var NodeIPC = function (_IPC) {
   _inherits(NodeIPC, _IPC);
@@ -56,7 +75,7 @@ var NodeIPC = function (_IPC) {
 
     _classCallCheck(this, NodeIPC);
 
-    opts = Object.assign(defaultOpts, opts);
+    opts = Object.assign({}, defaultOpts, opts);
 
     var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(NodeIPC).call(this, opts.debug));
 
@@ -104,12 +123,26 @@ var NodeIPC = function (_IPC) {
     value: function _slaveDisconnect(origin) {
       var socket = this.connections.get(origin);
 
-      NodeIPC.terminate(socket);
+      this._terminate(socket);
+    }
+  }, {
+    key: '_terminate',
+    value: function _terminate(socket) {
+      if (socket) {
+        try {
+          socket.__destroyed = true;
+          socket.destroy();
+
+          if (this.opts.allowDeauthorizeBroadcast !== false) {
+            this.broadcast('peer-message', { channel: 'disconnected', data: socket.id });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
     }
   }, {
     key: '_slaveOn',
-
-    // ignore
     value: function _slaveOn(channel) {
       for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
         args[_key - 1] = arguments[_key];
@@ -159,8 +192,9 @@ var NodeIPC = function (_IPC) {
     key: '_slaveBroadcast',
     value: function _slaveBroadcast(channel, data) {
       var except = arguments.length <= 2 || arguments[2] === undefined ? [] : arguments[2];
+      var dest = arguments[3];
 
-      return this._handleTransmit({ action: 'master-broadcast', channel: channel, data: data, except: except }, noop);
+      return this._handleTransmit({ action: 'master-broadcast', channel: channel, data: data, except: except, dest: dest }, noop);
     }
   }, {
     key: '_handleTransmit',
@@ -180,12 +214,12 @@ var NodeIPC = function (_IPC) {
       var eventId = this._generateUUID();
 
       if (action === 'master-broadcast') {
-        this.broadcast.apply(this, ['master-message', { id: eventId, channel: channel, data: data }].concat(_toConsumableArray(except)));
+        this.broadcast('master-message', { id: eventId, channel: channel, data: data }, except, dest);
         return callback();
       }
 
-      var tid = undefined;
-      var event = undefined;
+      var tid = void 0;
+      var event = void 0;
 
       var accepted = function accepted(res) {
         clearTimeout(tid);
@@ -197,7 +231,7 @@ var NodeIPC = function (_IPC) {
         reject({ dest: dest, channel: channel, data: data, awk: awk });
       };
 
-      var awkChan = undefined;
+      var awkChan = void 0;
 
       // if its not a master-broadcast
       if (action === 'master-message') {
@@ -242,14 +276,20 @@ var NodeIPC = function (_IPC) {
         _nodeIpc2.default.server.on('authorize', function (req, socket) {
           var origin = socket.id;
 
+          console.log(_this4.accepted);
+
           if (!_this4.opts.allowAllConnections) {
             if (!_this4.accepted.has(origin)) {
               _this4.log('Force disconnection', origin);
-              return NodeIPC.terminate(socket);
+              return _this4._terminate(socket);
             }
           }
 
           var updateSocket = function updateSocket() {
+            if (_this4.opts.allowAuthorizeBroadcast !== false) {
+              _this4.broadcast('peer-message', { channel: 'connected', data: origin });
+            }
+
             _this4.connections.set(origin, socket);
 
             _this4.emit(origin, 'authorized');
@@ -263,19 +303,19 @@ var NodeIPC = function (_IPC) {
 
               if (prevSocket && prevSocket.writable) {
                 var _ret2 = function () {
-                  var tid = undefined;
+                  var tid = void 0;
                   var event = 'is-alive-' + origin;
 
                   var prevAlive = function prevAlive() {
                     clearTimeout(tid);
                     _this4.log('Force disconnection; new connection', origin);
-                    return NodeIPC.terminate(socket);
+                    return _this4._terminate(socket);
                   };
 
                   var prevDead = function prevDead() {
                     _this4.removeListener(event, prevAlive);
                     _this4.log('Terminating previous connection due to no response', origin);
-                    NodeIPC.terminate(prevSocket);
+                    _this4._terminate(prevSocket);
                     updateSocket();
                   };
 
@@ -298,7 +338,7 @@ var NodeIPC = function (_IPC) {
               }
 
               _this4.log('Terminating previous connection', origin);
-              NodeIPC.terminate(prevSocket);
+              _this4._terminate(prevSocket);
             }();
 
             if ((typeof _ret === 'undefined' ? 'undefined' : _typeof(_ret)) === "object") return _ret.v;
@@ -349,7 +389,7 @@ var NodeIPC = function (_IPC) {
             }
           }
 
-          socket.destroy();
+          _this4._terminate(socket);
         });
 
         if (_this4.opts.allowSlaveEmit !== false) {
@@ -404,7 +444,7 @@ var NodeIPC = function (_IPC) {
 
             req.data.from = origin;
 
-            _this4.broadcast('peer-message', req.data, origin);
+            _this4.broadcast('peer-message', req.data, [origin], req.data.dest);
           });
         }
 
@@ -441,8 +481,18 @@ var NodeIPC = function (_IPC) {
   }, {
     key: 'broadcast',
     value: function broadcast(channel, data) {
-      for (var _len4 = arguments.length, except = Array(_len4 > 2 ? _len4 - 2 : 0), _key4 = 2; _key4 < _len4; _key4++) {
-        except[_key4 - 2] = arguments[_key4];
+      var except = arguments.length <= 2 || arguments[2] === undefined ? [] : arguments[2];
+      var dest = arguments[3];
+
+      var pattern = typeof dest === 'string' ? regexCast(dest) : null;
+      var origins = [].concat(_toConsumableArray(this.connections.keys()));
+
+      if (pattern) {
+        origins = origins.filter(function (a) {
+          return pattern.test(a);
+        });
+      } else if (typeof dest === 'string') {
+        origins = [dest];
       }
 
       var _iteratorNormalCompletion2 = true;
@@ -450,7 +500,7 @@ var NodeIPC = function (_IPC) {
       var _iteratorError2 = undefined;
 
       try {
-        for (var _iterator2 = this.connections.keys()[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+        for (var _iterator2 = origins[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
           var origin = _step2.value;
 
           if (except.indexOf(origin) > -1) {
@@ -489,16 +539,6 @@ var NodeIPC = function (_IPC) {
         }
       } catch (e) {
         console.error(e);
-      }
-    }
-  }], [{
-    key: 'terminate',
-    value: function terminate(socket) {
-      if (socket) {
-        try {
-          socket.__destroyed = true;
-          socket.destroy();
-        } catch (e) {}
       }
     }
   }]);

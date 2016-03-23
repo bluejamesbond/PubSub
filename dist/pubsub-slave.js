@@ -122,7 +122,8 @@ var PubSubSlave = function (_EventEmitter) {
       reject: _this.reject.bind(_this),
       on: _this._clientOn.bind(_this),
       removeListener: _this._clientRemoveListener.bind(_this),
-      once: _this._clientOnce.bind(_this)
+      once: _this._clientOnce.bind(_this),
+      address: _this.address.bind(_this)
     };
     _this.Master = {
       emit: _this._masterEmit.bind(_this),
@@ -265,8 +266,8 @@ var PubSubSlave = function (_EventEmitter) {
     }
   }, {
     key: '_peerBroadcast',
-    value: function _peerBroadcast(channel, data) {
-      this.queue.push({ channel: channel, action: this.eventMap.requestPeerBroadcast, data: data, awk: true });
+    value: function _peerBroadcast(channel, data, dest) {
+      this.queue.push({ channel: channel, action: this.eventMap.requestPeerBroadcast, data: data, dest: dest, awk: true });
     }
   }, {
     key: '_peerVolatile',
@@ -565,8 +566,8 @@ var PubSubSlave = function (_EventEmitter) {
         return callback();
       }
 
-      var tid = undefined;
-      var event = undefined;
+      var tid = void 0;
+      var event = void 0;
 
       var accepted = function accepted(res) {
         clearTimeout(tid);
@@ -578,7 +579,7 @@ var PubSubSlave = function (_EventEmitter) {
         reject(Error('No response received'));
       };
 
-      var awkChan = undefined;
+      var awkChan = void 0;
 
       if (action === eventMap.requestEmit) {
         awkChan = eventMap.responseClientAwk;

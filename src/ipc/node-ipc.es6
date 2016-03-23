@@ -11,12 +11,31 @@ const defaultOpts = {
   allowPeerEmit: true, // true: slaves can message a specific slave by origin
   allowPeerBroadcast: true, // true: slaves can talk amongst themselves
   allowSlaveEmit: true, // true: slaves can talk to master
+  allowAuthorizeBroadcast: true,
+  allowDeauthorizeBroadcast: true,
   allowAllConnections: true // false: set acceptable connections via accept, disconnect
 };
 
+function regexCast(pattern) {
+  const parts = pattern.split('/');
+  let regex = pattern;
+  let options = '';
+
+  if (parts.length > 1) {
+    regex = parts[1];
+    options = parts[2];
+  }
+
+  try {
+    return new RegExp(regex, options);
+  } catch (e) {
+    return false;
+  }
+}
+
 class NodeIPC extends IPC {
   constructor(id, opts = {}) {
-    opts = Object.assign(defaultOpts, opts);
+    opts = Object.assign({}, defaultOpts, opts);
 
     super(opts.debug);
 
@@ -58,14 +77,18 @@ class NodeIPC extends IPC {
   _slaveDisconnect(origin) {
     const socket = this.connections.get(origin);
 
-    NodeIPC.terminate(socket);
+    this._terminate(socket);
   }
 
-  static terminate(socket) {
+  _terminate(socket) {
     if (socket) {
       try {
         socket.__destroyed = true;
         socket.destroy();
+
+        if (this.opts.allowDeauthorizeBroadcast !== false) {
+          this.broadcast('peer-message', {channel: 'disconnected', data: socket.id});
+        }
       } catch (e) {
         // ignore
       }
@@ -98,15 +121,15 @@ class NodeIPC extends IPC {
     });
   }
 
-  _slaveBroadcast(channel, data, except = []) {
-    return this._handleTransmit({action: 'master-broadcast', channel, data, except}, noop);
+  _slaveBroadcast(channel, data, except = [], dest) {
+    return this._handleTransmit({action: 'master-broadcast', channel, data, except, dest}, noop);
   }
 
   _handleTransmit({dest, channel, data, resolve, action, reject, awk, except = []}, callback) {
     const eventId = this._generateUUID();
 
     if (action === 'master-broadcast') {
-      this.broadcast('master-message', {id: eventId, channel, data}, ...except);
+      this.broadcast('master-message', {id: eventId, channel, data}, except, dest);
       return callback();
     }
 
@@ -160,14 +183,20 @@ class NodeIPC extends IPC {
       ipc.server.on('authorize', (req, socket) => {
         const origin = socket.id;
 
+        console.log(this.accepted);
+
         if (!this.opts.allowAllConnections) {
           if (!this.accepted.has(origin)) {
             this.log('Force disconnection', origin);
-            return NodeIPC.terminate(socket);
+            return this._terminate(socket);
           }
         }
 
         const updateSocket = () => {
+          if (this.opts.allowAuthorizeBroadcast !== false) {
+            this.broadcast('peer-message', {channel: 'connected', data: origin});
+          }
+
           this.connections.set(origin, socket);
 
           this.emit(origin, 'authorized');
@@ -185,13 +214,13 @@ class NodeIPC extends IPC {
             const prevAlive = () => {
               clearTimeout(tid);
               this.log('Force disconnection; new connection', origin);
-              return NodeIPC.terminate(socket);
+              return this._terminate(socket);
             };
 
             const prevDead = () => {
               this.removeListener(event, prevAlive);
               this.log('Terminating previous connection due to no response', origin);
-              NodeIPC.terminate(prevSocket);
+              this._terminate(prevSocket);
               updateSocket();
             };
 
@@ -207,7 +236,7 @@ class NodeIPC extends IPC {
           }
 
           this.log('Terminating previous connection', origin);
-          NodeIPC.terminate(prevSocket);
+          this._terminate(prevSocket);
         }
 
         updateSocket();
@@ -232,7 +261,7 @@ class NodeIPC extends IPC {
           }
         }
 
-        socket.destroy();
+        this._terminate(socket);
       });
 
       if (this.opts.allowSlaveEmit !== false) {
@@ -287,7 +316,7 @@ class NodeIPC extends IPC {
 
           req.data.from = origin;
 
-          this.broadcast('peer-message', req.data, origin);
+          this.broadcast('peer-message', req.data, [origin], req.data.dest);
         });
       }
 
@@ -322,8 +351,17 @@ class NodeIPC extends IPC {
     ipc.server.start();
   }
 
-  broadcast(channel, data, ...except) {
-    for (const origin of this.connections.keys()) {
+  broadcast(channel, data, except = [], dest) {
+    const pattern = typeof dest === 'string' ? regexCast(dest) : null;
+    let origins = [...this.connections.keys()];
+
+    if (pattern) {
+      origins = origins.filter(a => pattern.test(a));
+    } else if (typeof dest === 'string') {
+      origins = [dest];
+    }
+
+    for (const origin of origins) {
       if (except.indexOf(origin) > -1) {
         continue;
       }

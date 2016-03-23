@@ -18,7 +18,7 @@ var _bluebird2 = _interopRequireDefault(_bluebird);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var _address = undefined;
+var _address = void 0;
 
 function address(server) {
   if (_address) {

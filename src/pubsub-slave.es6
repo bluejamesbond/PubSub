@@ -111,7 +111,8 @@ class PubSubSlave extends EventEmitter {
     reject: this.reject.bind(this),
     on: this._clientOn.bind(this),
     removeListener: this._clientRemoveListener.bind(this),
-    once: this._clientOnce.bind(this)
+    once: this._clientOnce.bind(this),
+    address: this.address.bind(this)
   };
 
   Master = {
@@ -167,8 +168,8 @@ class PubSubSlave extends EventEmitter {
     });
   }
 
-  _peerBroadcast(channel, data) {
-    this.queue.push({channel, action: this.eventMap.requestPeerBroadcast, data, awk: true});
+  _peerBroadcast(channel, data, dest) {
+    this.queue.push({channel, action: this.eventMap.requestPeerBroadcast, data, dest, awk: true});
   }
 
   _peerVolatile(dest, channel, data) {

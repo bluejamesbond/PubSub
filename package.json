@@ -1,7 +1,7 @@
 {
-  "name": "node-pubsub",
-  "version": "1.0.0",
-  "description": "Pusher system using the publisher/subscriber model",
+  "name": "cluster-pubsub",
+  "version": "1.0.0-alpha.4",
+  "description": "Pusher system using the publisher/subscriber model with IPC and managed clients",
   "main": "dist/index.js",
   "dependencies": {
     "async": "1.5.2",

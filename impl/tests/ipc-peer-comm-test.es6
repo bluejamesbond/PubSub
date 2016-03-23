@@ -41,6 +41,20 @@ describe(global.TEST, () => {
     psa.Peer.broadcast('yolo', {test: 'foo'});
   });
 
+  it('should send broadcast two peers - regex', async done => {
+    psb.Peer.once('yolo1', (origin, data) => {
+      assert(psa.origin, origin);
+      assert(data.test, 'foo');
+      done();
+    });
+
+    psa.Peer.once('yolo1', () => {
+      throw new Error('should not broadcast to same socket');
+    });
+
+    psa.Peer.broadcast('yolo1', {test: 'foo'}, '/ipc\\-peer\\-comm/');
+  });
+
   it('should emit between two peers', async () => {
     psb.Peer.once('yolo2', (origin, data, respond) => {
       assert(psa.origin, origin);
@@ -60,6 +74,20 @@ describe(global.TEST, () => {
     }
   });
 
+  it('should emit between two itself', async () => {
+    psa.Peer.once('yolo5', (origin, data, respond) => {
+      assert(psa.origin, origin);
+      assert(data.test, 'bar');
+      respond({status: 'ok'});
+    });
+
+    const dest = psa.origin;
+    const res = await psa.Peer.emit(dest, 'yolo5', {test: 'bar'});
+
+    if (res.status !== 'ok') {
+      throw new Error('Failed response');
+    }
+  });
 
   it('should connect client', async done => {
     const address = await psa.address();

@@ -1,1 +1,1 @@
-{"version":3,"sources":["../src/index.es6"],"names":[],"mappings":";;;;;;;;;;;iDAAQ;;;;;;;;;gDACA","file":"index.es6","sourcesContent":["export {default as Master} from './pubsub-master.es6';\nexport {default as Slave} from './pubsub-slave.es6';\n"]}
+{"version":3,"sources":["../src/index.es6"],"names":[],"mappings":";;;;;;;;;;;iDAAQ,O;;;;;;;;;gDACA,O","file":"index.es6","sourcesContent":["export {default as Master} from './pubsub-master.es6';\nexport {default as Slave} from './pubsub-slave.es6';\n"]}
